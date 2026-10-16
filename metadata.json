@@ -1,6 +1,6 @@
 {
   "name": "V CAM",
-  "description": "Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and dynamic fire effects.",
+  "description": "Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and interactive 3D blueprint CAD creation.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

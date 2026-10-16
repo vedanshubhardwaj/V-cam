@@ -1,29 +1,22 @@
 import React from 'react';
-import { Flame, Hand, Sliders, Sparkles, CloudRain, Info, Zap, Box, Shield } from 'lucide-react';
-import { ControlledObjectType, DetectedHand, FireConfig } from '../types/vision';
-import { controlledObjectManager } from '../utils/controlledObject';
-import { soundFx } from '../utils/audio';
+import { Hand, Box, Pencil, Sparkles, Compass, Move, Maximize2 } from 'lucide-react';
+import { DetectedHand } from '../types/vision';
+import { blueprintEngine } from '../utils/blueprintEngine';
 
 interface GesturePanelProps {
   hands: DetectedHand[];
   isStreaming: boolean;
-  fireConfig: FireConfig;
-  onFireConfigChange: (config: FireConfig) => void;
 }
 
-export const GesturePanel: React.FC<GesturePanelProps> = ({
-  hands,
-  isStreaming,
-  fireConfig,
-  onFireConfigChange,
-}) => {
+export const GesturePanel: React.FC<GesturePanelProps> = ({ hands, isStreaming }) => {
   const isAnyFist = hands.some((h) => h.isFist);
   const isAnyPalm = hands.some((h) => h.isOpenPalm);
   const isAnyPinch = hands.some((h) => h.isPinching);
-  const isAnyPunch = hands.some((h) => h.isPunching);
+  const isAnyPointing = hands.some((h) => h.isPointing);
+  const isDualHands = hands.length >= 2;
 
-  const maxSpeed = hands.reduce((max, h) => Math.max(max, h.velocity.speed), 0);
-  const objState = controlledObjectManager.getState();
+  const bpState = blueprintEngine.getState();
+  const leadHand = hands[0];
 
   return (
     <div className="relative hud-panel rounded-xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
@@ -38,42 +31,42 @@ export const GesturePanel: React.FC<GesturePanelProps> = ({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
           <h2 className="text-sm font-semibold tracking-wide text-cyan-300 uppercase font-mono">
-            Fire Fist & Gesture FX
+            3D Spatial Gesture Telemetry
           </h2>
         </div>
         <span className="text-xs font-mono text-slate-400">
-          {hands.length > 0 ? `${hands.length} HAND${hands.length > 1 ? 'S' : ''} TRACKED` : 'IDLE'}
+          {hands.length > 0 ? `${hands.length} HAND${hands.length > 1 ? 'S' : ''} TRACKED` : 'STANDBY'}
         </span>
       </div>
 
       {/* Main Gesture Status Display */}
       {!isStreaming ? (
         <div className="py-6 text-center text-slate-500 font-mono text-xs">
-          Camera offline. Start camera to initialize hand gesture tracking.
+          Camera offline. Start camera to initialize hand tracking and 3D CAD gestures.
         </div>
       ) : hands.length === 0 ? (
         <div className="py-6 flex flex-col items-center justify-center text-center">
           <div className="w-12 h-12 rounded-full bg-slate-800/60 border border-slate-700/60 flex items-center justify-center mb-2">
             <Hand className="w-6 h-6 text-slate-500 animate-pulse" />
           </div>
-          <p className="text-sm font-medium text-slate-400">No hands in view</p>
-          <p className="text-xs text-slate-500 mt-1 max-w-[240px]">
-            Raise your hand into the frame. Clench into a fist to summon fire.
+          <p className="text-sm font-medium text-slate-400">No hands detected</p>
+          <p className="text-xs text-slate-500 mt-1 max-w-[260px]">
+            Raise hand into camera view. Pinch to draw, clench fist to move, open palm to rotate.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Active Gesture State Card */}
           <div
-            className={`p-3 rounded-lg border transition-all duration-300 ${
-              isAnyPunch
-                ? 'bg-gradient-to-r from-red-950/90 to-orange-950/90 border-red-500/80 shadow-[0_0_25px_rgba(239,68,68,0.5)]'
-                : isAnyFist
-                ? 'bg-gradient-to-r from-orange-950/70 to-red-950/70 border-orange-500/60 shadow-[0_0_20px_rgba(255,100,0,0.35)]'
+            className={`p-3.5 rounded-lg border transition-all duration-300 ${
+              isDualHands
+                ? 'bg-gradient-to-r from-blue-950/80 to-cyan-950/80 border-cyan-400/60 shadow-[0_0_20px_rgba(0,240,255,0.25)]'
                 : isAnyPinch
-                ? 'bg-gradient-to-r from-purple-950/70 to-indigo-950/70 border-purple-400/50 shadow-[0_0_15px_rgba(192,132,252,0.25)]'
+                ? 'bg-gradient-to-r from-teal-950/80 to-cyan-950/80 border-teal-400/60 shadow-[0_0_20px_rgba(20,184,166,0.3)]'
+                : isAnyFist
+                ? 'bg-gradient-to-r from-cyan-950/80 to-blue-950/80 border-cyan-500/60 shadow-[0_0_20px_rgba(0,240,255,0.25)]'
                 : isAnyPalm
-                ? 'bg-gradient-to-r from-cyan-950/60 to-blue-950/60 border-cyan-400/50 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+                ? 'bg-gradient-to-r from-indigo-950/70 to-blue-950/70 border-indigo-400/50 shadow-[0_0_15px_rgba(99,102,241,0.25)]'
                 : 'bg-[#071126]/90 border-slate-700/60'
             }`}
           >
@@ -81,163 +74,98 @@ export const GesturePanel: React.FC<GesturePanelProps> = ({
               <div className="flex items-center gap-3">
                 <div
                   className={`p-2 rounded-md ${
-                    isAnyPunch
-                      ? 'bg-red-500/20 text-red-400 animate-bounce'
-                      : isAnyFist
-                      ? 'bg-orange-500/20 text-orange-400'
-                      : isAnyPinch
-                      ? 'bg-purple-500/20 text-purple-300'
-                      : isAnyPalm
+                    isDualHands
                       ? 'bg-cyan-500/20 text-cyan-300'
+                      : isAnyPinch
+                      ? 'bg-teal-500/20 text-teal-300'
+                      : isAnyFist
+                      ? 'bg-blue-500/20 text-blue-300'
+                      : isAnyPalm
+                      ? 'bg-indigo-500/20 text-indigo-300'
                       : 'bg-slate-800 text-slate-400'
                   }`}
                 >
-                  {isAnyFist ? (
-                    <Flame className="w-6 h-6 fill-orange-500" />
+                  {isDualHands ? (
+                    <Maximize2 className="w-6 h-6" />
                   ) : isAnyPinch ? (
-                    <Sparkles className="w-6 h-6" />
+                    <Pencil className="w-6 h-6" />
+                  ) : isAnyFist ? (
+                    <Move className="w-6 h-6" />
                   ) : (
                     <Hand className="w-6 h-6" />
                   )}
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">
-                    Gesture State
+                    Active CAD Gesture
                   </span>
                   <div className="text-sm sm:text-base font-bold tracking-wide">
-                    {isAnyPunch ? (
-                      <span className="text-red-400 flex items-center gap-1.5 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)]">
-                        💥 PUNCH STRIKE BLAST!
-                      </span>
-                    ) : isAnyFist ? (
-                      <span className="text-orange-400 flex items-center gap-1.5 drop-shadow-[0_0_10px_rgba(255,120,0,0.8)]">
-                        🔥 FIRE FIST IGNITED
+                    {isDualHands ? (
+                      <span className="text-cyan-300 flex items-center gap-1.5">
+                        ↔ DUAL HANDS — 3D ZOOM & SCALE
                       </span>
                     ) : isAnyPinch ? (
-                      <span className="text-purple-300 flex items-center gap-1.5">
-                        🤏 PINCH — OBJECT GRIP
+                      <span className="text-teal-300 flex items-center gap-1.5 drop-shadow-[0_0_10px_rgba(20,184,166,0.6)]">
+                        ✍️ PINCH — DRAWING 3D BLUEPRINT
+                      </span>
+                    ) : isAnyFist ? (
+                      <span className="text-cyan-300 flex items-center gap-1.5">
+                        ✊ FIST GRIP — TRANSLATING 3D MODEL
+                      </span>
+                    ) : isAnyPointing ? (
+                      <span className="text-teal-300 flex items-center gap-1.5">
+                        ☝️ STYLUS POINTER — AIMING RETICLE
                       </span>
                     ) : isAnyPalm ? (
-                      <span className="text-cyan-300 flex items-center gap-1.5">
-                        ✋ OPEN PALM — TRACTOR BEAM
+                      <span className="text-indigo-300 flex items-center gap-1.5">
+                        ✋ OPEN PALM — 3D ORBIT & ROTATE
                       </span>
                     ) : (
-                      <span className="text-slate-300">TRANSITIONAL GESTURE</span>
+                      <span className="text-slate-400">Tracking hand movement...</span>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="text-right">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/30 text-cyan-300 uppercase block mb-1">
-                  {hands.map((h) => h.handedness).join(' + ')}
-                </span>
-                <span className="text-[9px] font-mono text-slate-400 block">
-                  {maxSpeed} px/s
-                </span>
-              </div>
+              {/* Handedness Badge */}
+              {leadHand && (
+                <div className="text-right font-mono">
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-cyan-500/30 text-[10px] text-cyan-300 uppercase">
+                    {leadHand.handedness} Hand
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Interactive AR Object Telemetry */}
-          <div className="bg-[#071126]/80 rounded-lg p-3 border border-cyan-500/20 space-y-2">
-            <div className="flex justify-between items-center text-xs font-mono">
-              <span className="text-cyan-300 font-semibold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                Controlled AR Object:
-              </span>
-              <span className="text-slate-400 text-[10px] uppercase">
-                {objState.type.replace('_', ' ')}
-              </span>
-            </div>
-
-            <div className="text-[11px] font-mono text-slate-300 bg-[#091530] p-2 rounded border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-400 truncate mr-2">Status:</span>
-              <span
-                className={`font-semibold ${
-                  objState.isGrabbed
-                    ? 'text-purple-300'
-                    : objState.isAttracted
-                    ? 'text-cyan-300'
-                    : 'text-amber-300'
-                }`}
-              >
-                {objState.lastInteractionText}
-              </span>
-            </div>
-
-            {/* Quick Switcher for Controlled Object */}
-            <div className="grid grid-cols-4 gap-1 pt-1">
-              {[
-                { id: 'fire_orb', label: 'Orb', icon: Flame },
-                { id: 'cyber_cube', label: 'Cube', icon: Box },
-                { id: 'phoenix_core', label: 'Phoenix', icon: Sparkles },
-                { id: 'quantum_shield', label: 'Shield', icon: Shield },
-              ].map((obj) => {
-                const Icon = obj.icon;
-                const active = objState.type === obj.id;
-                return (
-                  <button
-                    key={obj.id}
-                    onClick={() => {
-                      soundFx.playBeep(1000);
-                      controlledObjectManager.setType(obj.id as ControlledObjectType);
-                    }}
-                    className={`py-1 px-1.5 rounded text-[10px] font-mono flex items-center justify-center gap-1 transition-all ${
-                      active
-                        ? 'bg-cyan-500/25 border border-cyan-400/50 text-cyan-300 font-bold'
-                        : 'bg-slate-900/60 text-slate-400 hover:text-white border border-transparent'
-                    }`}
-                  >
-                    <Icon className="w-3 h-3 text-cyan-400" />
-                    <span>{obj.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Finger Curl Flexion Gauges */}
-          {hands[0] && (
-            <div className="bg-[#071126]/70 rounded-lg p-3 border border-cyan-500/15">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-mono text-slate-400 uppercase">
-                  Finger Flexion ({hands[0].handedness} Hand)
-                </span>
-                <span className="text-[10px] font-mono text-cyan-400">
-                  {hands[0].isPunching
-                    ? 'PUNCH IMPACT'
-                    : hands[0].isFist
-                    ? 'FIST LOCKED'
-                    : hands[0].isPinching
-                    ? 'PINCHING'
-                    : hands[0].isOpenPalm
-                    ? 'OPEN PALM'
-                    : 'FLEXING'}
+          {/* Finger Flexion Analysis Telemetry */}
+          {leadHand && (
+            <div className="p-3 rounded-lg bg-[#071126]/90 border border-cyan-500/20 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-300">
+                <span className="text-cyan-400 font-semibold">Finger Joint Flexion (%):</span>
+                <span className="text-slate-400">
+                  Speed: {Math.round(leadHand.velocity.speed)} px/s
                 </span>
               </div>
-
-              <div className="grid grid-cols-5 gap-1.5 text-center">
-                {(['thumb', 'index', 'middle', 'ring', 'pinky'] as const).map((finger) => {
-                  const val = hands[0].fingerCurls[finger];
-                  const isCurled = val > 0.6;
+              <div className="grid grid-cols-5 gap-2 text-center font-mono">
+                {[
+                  { name: 'Thumb', val: leadHand.fingerCurls.thumb },
+                  { name: 'Index', val: leadHand.fingerCurls.index },
+                  { name: 'Middle', val: leadHand.fingerCurls.middle },
+                  { name: 'Ring', val: leadHand.fingerCurls.ring },
+                  { name: 'Pinky', val: leadHand.fingerCurls.pinky },
+                ].map((f) => {
+                  const pct = Math.round((1 - f.val) * 100);
                   return (
-                    <div
-                      key={finger}
-                      className="bg-[#091530] p-1.5 rounded border border-slate-800 text-[10px] font-mono"
-                    >
-                      <div className="text-slate-400 capitalize truncate mb-1">{finger}</div>
-                      <div className="h-9 bg-slate-900 rounded relative overflow-hidden flex flex-col justify-end">
+                    <div key={f.name} className="space-y-1">
+                      <div className="h-10 w-full bg-slate-900 rounded-sm overflow-hidden flex flex-col justify-end p-0.5 border border-slate-800">
                         <div
-                          className={`w-full transition-all duration-150 ${
-                            isCurled ? 'bg-orange-500' : 'bg-cyan-500'
-                          }`}
-                          style={{ height: `${Math.round(val * 100)}%` }}
+                          className="w-full bg-gradient-to-t from-cyan-600 to-teal-400 rounded-xs transition-all duration-150"
+                          style={{ height: `${pct}%` }}
                         />
                       </div>
-                      <div className="mt-1 text-[9px] text-slate-300">
-                        {Math.round(val * 100)}%
-                      </div>
+                      <span className="text-[10px] text-slate-400 block">{f.name}</span>
+                      <span className="text-[9px] text-cyan-300 font-bold">{pct}%</span>
                     </div>
                   );
                 })}
@@ -245,77 +173,47 @@ export const GesturePanel: React.FC<GesturePanelProps> = ({
             </div>
           )}
 
-          {/* Fire Particles FX Controller */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-              <span className="flex items-center gap-1.5 text-cyan-300">
-                <Sliders className="w-3.5 h-3.5" /> Flame Intensity
+          {/* 3D Blueprint Spatial Stats */}
+          <div className="p-3 rounded-lg bg-[#071126]/90 border border-cyan-500/20 space-y-2 font-mono text-xs">
+            <div className="flex items-center justify-between text-cyan-400 font-semibold text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <Box className="w-3.5 h-3.5" />
+                <span>3D Blueprint Telemetry:</span>
               </span>
-              <span className="text-cyan-400 font-bold">{fireConfig.intensity}x</span>
+              <span className="text-slate-400 uppercase text-[10px]">
+                Preset: {bpState.preset}
+              </span>
             </div>
-            <input
-              type="range"
-              min="0.5"
-              max="2.0"
-              step="0.1"
-              value={fireConfig.intensity}
-              onChange={(e) => {
-                onFireConfigChange({
-                  ...fireConfig,
-                  intensity: parseFloat(e.target.value),
-                });
-              }}
-              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-            />
 
-            <div className="flex items-center justify-between gap-3 pt-1">
-              {/* Sparks Toggle */}
-              <button
-                onClick={() => {
-                  soundFx.playBeep(800);
-                  onFireConfigChange({
-                    ...fireConfig,
-                    sparksEnabled: !fireConfig.sparksEnabled,
-                  });
-                }}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border text-xs font-mono transition-all ${
-                  fireConfig.sparksEnabled
-                    ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-500'
-                }`}
-              >
-                <Sparkles className="w-3 h-3" />
-                Sparks {fireConfig.sparksEnabled ? 'ON' : 'OFF'}
-              </button>
-
-              {/* Smoke Toggle */}
-              <button
-                onClick={() => {
-                  soundFx.playBeep(750);
-                  onFireConfigChange({
-                    ...fireConfig,
-                    smokeEnabled: !fireConfig.smokeEnabled,
-                  });
-                }}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md border text-xs font-mono transition-all ${
-                  fireConfig.smokeEnabled
-                    ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-500'
-                }`}
-              >
-                <CloudRain className="w-3 h-3" />
-                Smoke {fireConfig.smokeEnabled ? 'ON' : 'OFF'}
-              </button>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Zoom Scale</span>
+                <span className="text-xs font-bold text-cyan-300">
+                  {Math.round(bpState.scale * 100)}%
+                </span>
+              </div>
+              <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Drawn Strokes</span>
+                <span className="text-xs font-bold text-teal-300">
+                  {bpState.freehandStrokes.length}
+                </span>
+              </div>
+              <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Vertices</span>
+                <span className="text-xs font-bold text-white">
+                  {bpState.vertices.length}
+                </span>
+              </div>
+              <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">Status</span>
+                <span className="text-xs font-bold text-emerald-400">
+                  {bpState.isDrawing ? 'DRAWING' : 'IDLE'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Guide tooltip */}
-      <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-        <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-        <span>Fist = Fire Fist &bull; Palm = Tractor Beam &bull; Punch = Blast</span>
-      </div>
     </div>
   );
 };

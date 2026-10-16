@@ -3,12 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>V CAM - Neural Vision & Gesture FX</title>
-    <meta name="description" content="Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and dynamic fire effects." />
-    <meta property="og:title" content="V CAM - Neural Vision & Gesture FX" />
-    <meta property="og:description" content="Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and dynamic fire effects." />
+    <title>V CAM - 3D Blueprint CAD & Gesture Vision</title>
+    <meta name="description" content="Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and interactive 3D blueprint CAD creation." />
+    <meta property="og:title" content="V CAM - 3D Blueprint CAD & Gesture Vision" />
+    <meta property="og:description" content="Futuristic real-time AI camera with facial expression estimation, hand gesture tracking, and interactive 3D blueprint CAD creation." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (function () {
+        const origError = console.error;
+        console.error = function (...args) {
+          const msg = args.map(a => typeof a === 'string' ? a : (a && a.message) || '').join(' ');
+          if (
+            msg.includes('INFO: Created TensorFlow Lite XNNPACK delegate') ||
+            msg.includes('Created TensorFlow Lite XNNPACK delegate') ||
+            msg.includes('INFO: Initialized TensorFlow Lite') ||
+            msg.includes('XNNPACK delegate for CPU') ||
+            msg.startsWith('INFO:')
+          ) {
+            console.info(...args);
+            return;
+          }
+          origError.apply(console, args);
+        };
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,13 +1,14 @@
 import React from 'react';
-import { Flame, Eye, Volume2, VolumeX, Camera, BookOpen, Video } from 'lucide-react';
-import { FireColorScheme, FireConfig } from '../types/vision';
+import { Eye, Volume2, VolumeX, Camera, BookOpen, Video, Palette } from 'lucide-react';
+import { BlueprintColorTheme } from '../types/vision';
+import { blueprintEngine } from '../utils/blueprintEngine';
 import { soundFx } from '../utils/audio';
 
 interface HeaderProps {
   isStreaming: boolean;
   fps: number;
-  fireConfig: FireConfig;
-  onFireConfigChange: (config: FireConfig) => void;
+  colorTheme: BlueprintColorTheme;
+  onColorThemeChange: (theme: BlueprintColorTheme) => void;
   onSnapshot: () => void;
   isModelReady: boolean;
   isMuted: boolean;
@@ -19,8 +20,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   isStreaming,
   fps,
-  fireConfig,
-  onFireConfigChange,
+  colorTheme,
+  onColorThemeChange,
   onSnapshot,
   isModelReady,
   isMuted,
@@ -28,11 +29,12 @@ export const Header: React.FC<HeaderProps> = ({
   activeView,
   onViewChange,
 }) => {
-  const schemes: { id: FireColorScheme; label: string; color: string }[] = [
-    { id: 'classic', label: 'Inferno Orange', color: 'from-amber-500 to-orange-600' },
-    { id: 'plasma', label: 'Plasma Cyan', color: 'from-cyan-400 to-blue-600' },
-    { id: 'violet', label: 'Void Violet', color: 'from-purple-400 to-fuchsia-600' },
-    { id: 'emerald', label: 'Emerald Green', color: 'from-emerald-400 to-teal-600' },
+  const themes: { id: BlueprintColorTheme; label: string; color: string }[] = [
+    { id: 'cyan', label: 'Cyan Blueprint', color: 'from-cyan-400 to-blue-600' },
+    { id: 'emerald', label: 'Emerald Matrix', color: 'from-emerald-400 to-teal-600' },
+    { id: 'amber', label: 'Laser Amber', color: 'from-amber-400 to-orange-600' },
+    { id: 'violet', label: 'Electric Violet', color: 'from-purple-400 to-fuchsia-600' },
+    { id: 'white', label: 'Technical White', color: 'from-slate-200 to-white' },
   ];
 
   return (
@@ -57,11 +59,11 @@ export const Header: React.FC<HeaderProps> = ({
                   V <span className="text-cyan-400">CAM</span>
                 </h1>
                 <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
-                  Neural FX v2.5
+                  CAD Vision v3.0
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Fire Fist & Gesture-Controlled AR Engine
+                3D Blueprint Creation & Spatial Gesture Vision
               </p>
             </div>
           </button>
@@ -122,52 +124,51 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Fire Preset Selector */}
+          {/* Blueprint Theme Selector */}
           <div className="flex items-center gap-1.5 bg-[#0a142c] border border-cyan-500/20 rounded-md p-1">
             <span className="text-[11px] font-mono text-slate-400 px-1 hidden md:inline">
-              <Flame className="w-3.5 h-3.5 inline mr-1 text-orange-400" />
-              FX:
+              <Palette className="w-3.5 h-3.5 inline mr-1 text-cyan-400" />
+              Theme:
             </span>
             <select
-              value={fireConfig.scheme}
+              value={colorTheme}
               onChange={(e) => {
+                const t = e.target.value as BlueprintColorTheme;
                 soundFx.playBeep(980);
-                onFireConfigChange({
-                  ...fireConfig,
-                  scheme: e.target.value as FireColorScheme,
-                });
+                onColorThemeChange(t);
+                blueprintEngine.setColorTheme(t);
               }}
               className="bg-[#0f1d3d] text-xs text-cyan-300 rounded px-2 py-1 outline-none border border-cyan-500/30 cursor-pointer font-mono"
             >
-              {schemes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
+              {themes.map((th) => (
+                <option key={th.id} value={th.id} className="bg-[#071126] text-white">
+                  {th.label}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Audio Mute Button */}
+          {/* Sound Toggle */}
           <button
-            onClick={() => onToggleMute(!isMuted)}
+            onClick={() => {
+              onToggleMute(!isMuted);
+              soundFx.playBeep(isMuted ? 880 : 440);
+            }}
             title={isMuted ? 'Unmute SFX' : 'Mute SFX'}
-            className="p-2 rounded-md bg-[#0a142c] border border-cyan-500/20 text-slate-300 hover:text-cyan-300 hover:border-cyan-400/40 transition-colors"
+            className="p-2 rounded-md bg-[#0a142c] border border-cyan-500/20 text-slate-300 hover:text-cyan-400 transition-colors cursor-pointer"
           >
-            {isMuted ? (
-              <VolumeX className="w-4 h-4 text-slate-500" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-cyan-400" />
-            )}
+            {isMuted ? <VolumeX className="w-4 h-4 text-slate-500" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
           </button>
 
           {/* Snapshot Button */}
           {isStreaming && (
             <button
               onClick={onSnapshot}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium text-xs shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-all cursor-pointer"
+              title="Capture blueprint snapshot"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs tracking-wide font-mono shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-all cursor-pointer"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Capture</span>
+              <span className="hidden sm:inline">Snapshot</span>
             </button>
           )}
         </div>

@@ -8,24 +8,21 @@ import {
   Layers,
   AlertTriangle,
   RefreshCw,
-  Flame,
   Hand,
-  CheckCircle2,
-  Sparkles,
   RotateCcw,
   Box,
-  Shield,
-  Zap,
+  Pencil,
+  Crosshair,
+  Sparkles,
+  Smile,
 } from 'lucide-react';
 import { visionEngine } from '../services/visionEngine';
-import { FireEffectSystem } from '../utils/particleSystem';
 import { soundFx } from '../utils/audio';
-import { controlledObjectManager } from '../utils/controlledObject';
+import { blueprintEngine } from '../utils/blueprintEngine';
 import {
-  ControlledObjectType,
+  AppInteractionMode,
   DetectedFace,
   DetectedHand,
-  FireConfig,
   VisionDetectionResult,
 } from '../types/vision';
 
@@ -33,12 +30,13 @@ interface CameraViewProps {
   isStreaming: boolean;
   onStartCamera: () => void;
   onStopCamera: () => void;
-  fireConfig: FireConfig;
+  interactionMode?: AppInteractionMode;
   onDetectionUpdate: (data: VisionDetectionResult) => void;
   onFpsUpdate: (fps: number) => void;
   onModelReadyUpdate: (ready: boolean) => void;
   cameraError: string | null;
   onClearError: () => void;
+  onCameraError?: (error: string) => void;
   onRegisterCaptureHandler?: (handler: () => string | null) => void;
 }
 
@@ -46,12 +44,12 @@ export const CameraView: React.FC<CameraViewProps> = ({
   isStreaming,
   onStartCamera,
   onStopCamera,
-  fireConfig,
   onDetectionUpdate,
   onFpsUpdate,
   onModelReadyUpdate,
   cameraError,
   onClearError,
+  onCameraError,
   onRegisterCaptureHandler,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -60,19 +58,12 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
   const [isMirrored, setIsMirrored] = useState<boolean>(true);
   const [showHud, setShowHud] = useState<boolean>(true);
-  const [showObject, setShowObject] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [modelStatusText, setModelStatusText] = useState<string>('Initializing...');
+  const [modelStatusText, setModelStatusText] = useState<string>('Initializing AI Engine...');
   const [isModelLoading, setIsModelLoading] = useState<boolean>(false);
-  const [palmQuenchedFlash, setPalmQuenchedFlash] = useState<boolean>(false);
-  const [punchStrikeFlash, setPunchStrikeFlash] = useState<string | null>(null);
-
-  const [activeObjectType, setActiveObjectType] = useState<ControlledObjectType>('fire_orb');
 
   // References for animation loop
   const animFrameId = useRef<number | null>(null);
-  const fireSystemRef = useRef<FireEffectSystem>(new FireEffectSystem());
-  const previousGestures = useRef<Map<string, 'closed_fist' | 'open_palm' | 'pinch' | 'unknown'>>(new Map());
   const fpsCounter = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: performance.now() });
 
   // Stream state
@@ -94,7 +85,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         }
       })
       .catch((err) => {
-        console.error('Vision initialization error:', err);
+        console.warn('Vision initialization note:', err);
         if (mounted) {
           setIsModelLoading(false);
           setModelStatusText('Error loading models');
@@ -134,7 +125,18 @@ export const CameraView: React.FC<CameraViewProps> = ({
           await videoRef.current.play();
         }
       } catch (err: any) {
-        console.error('Failed to get user media:', err);
+        console.warn('Webcam stream notice:', err);
+        let msg = 'Unable to access camera.';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg = 'Camera access was denied. Please grant camera permission in your browser URL bar or settings to use V CAM.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          msg = 'No camera device detected on your system. Please connect a webcam.';
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          msg = 'Your camera is currently in use by another application. Please close other camera apps and retry.';
+        } else {
+          msg = `Camera issue: ${err.message || 'Unable to start camera stream.'}`;
+        }
+        onCameraError?.(msg);
       }
     };
 
@@ -148,7 +150,6 @@ export const CameraView: React.FC<CameraViewProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
-      fireSystemRef.current.clear();
     }
 
     return () => {
@@ -178,13 +179,8 @@ export const CameraView: React.FC<CameraViewProps> = ({
     ctx.drawImage(videoRef.current, 0, 0, exportCanvas.width, exportCanvas.height);
     ctx.restore();
 
-    // Draw HUD, Object & Fire layer
+    // Draw HUD & Blueprint CAD layer
     ctx.drawImage(canvasRef.current, 0, 0);
-
-    // Add V CAM watermark
-    ctx.font = 'bold 16px monospace';
-    ctx.fillStyle = 'rgba(0, 240, 255, 0.9)';
-    ctx.fillText('V CAM // NEURAL FX & FIRE FIST', 24, exportCanvas.height - 24);
 
     return exportCanvas.toDataURL('image/png');
   }, [isMirrored]);
@@ -193,142 +189,80 @@ export const CameraView: React.FC<CameraViewProps> = ({
     if (onRegisterCaptureHandler) {
       onRegisterCaptureHandler(captureSnapshot);
     }
-  }, [onRegisterCaptureHandler, captureSnapshot]);
+  }, [captureSnapshot, onRegisterCaptureHandler]);
 
-  // Toggle fullscreen
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(() => {});
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      setIsFullscreen(false);
-    }
+  // Direct canvas pointer event handlers for mouse/stylus drawing
+  const getCanvasCoords = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
   };
 
-  // Main Processing & Animation Loop
-  useEffect(() => {
-    if (!isStreaming) {
-      if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
-      return;
-    }
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isStreaming) return;
+    const { x, y } = getCanvasCoords(e);
+    blueprintEngine.handlePointerDown(x, y);
+  };
 
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isStreaming) return;
+    const { x, y } = getCanvasCoords(e);
+    blueprintEngine.handlePointerMove(x, y);
+  };
+
+  const handlePointerUp = () => {
+    if (!isStreaming) return;
+    blueprintEngine.handlePointerUp();
+  };
+
+  // Main Real-Time Vision & Render Loop
+  useEffect(() => {
     let isRunning = true;
 
-    const renderLoop = (timestamp: number) => {
+    const renderLoop = () => {
       if (!isRunning) return;
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      if (video && canvas && video.readyState >= 2) {
-        // Sync canvas resolution to video dimensions
+      if (
+        isStreaming &&
+        video &&
+        canvas &&
+        video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        video.videoWidth > 0
+      ) {
         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth || 1280;
-          canvas.height = video.videoHeight || 720;
-          controlledObjectManager.resetPosition(canvas.width, canvas.height);
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
         }
 
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // 1. Process Computer Vision Frame
-          const detection = visionEngine.processVideoFrame(
+          // 1. Run MediaPipe Detection (Face + Hand Landmarkers)
+          const detection = visionEngine.processFrame(
             video,
-            timestamp,
             canvas.width,
             canvas.height,
             isMirrored
           );
-
           onDetectionUpdate(detection);
 
-          // 2. Audio Triggers & Gesture State Transitions
           const currentHands = detection.hands;
-          const activeFistsForFire: { id: string; x: number; y: number; radius: number }[] = [];
 
-          currentHands.forEach((hand, idx) => {
-            const handId = `hand_${idx}_${hand.handedness}`;
-            const prevGesture = previousGestures.current.get(handId) || 'unknown';
+          // 2. Update & Render 3D CAD Blueprint with Hand Gestures
+          blueprintEngine.update(canvas.width, canvas.height, currentHands);
+          blueprintEngine.render(ctx, currentHands);
 
-            // Transition into Closed Fist -> Ignite flame!
-            if (hand.isFist && prevGesture !== 'closed_fist') {
-              soundFx.playIgnite();
-            }
-
-            // Transition into Open Palm -> Quench flame!
-            if (hand.isOpenPalm && prevGesture === 'closed_fist') {
-              soundFx.playQuench();
-              setPalmQuenchedFlash(true);
-              setTimeout(() => setPalmQuenchedFlash(false), 800);
-            }
-
-            // Punch Strike Blast Trigger
-            if (hand.isPunching) {
-              soundFx.playPunch();
-              fireSystemRef.current.triggerPunchBurst(
-                hand.fistCenter.x,
-                hand.fistCenter.y,
-                hand.radius,
-                fireConfig
-              );
-              setPunchStrikeFlash(`🔥 PUNCH STRIKE (${hand.velocity.speed} px/s)`);
-              setTimeout(() => setPunchStrikeFlash(null), 700);
-            }
-
-            previousGestures.current.set(handId, hand.gesture);
-
-            // If fist is closed: emit realistic fire particles!
-            if (hand.isFist) {
-              fireSystemRef.current.emitFromHand(
-                handId,
-                hand.fistCenter.x,
-                hand.fistCenter.y,
-                hand.radius,
-                fireConfig
-              );
-
-              activeFistsForFire.push({
-                id: handId,
-                x: hand.fistCenter.x,
-                y: hand.fistCenter.y,
-                radius: hand.radius,
-              });
-            }
-          });
-
-          // 3. Update & Render Interactive Controlled Object
-          if (showObject) {
-            controlledObjectManager.update(
-              canvas.width,
-              canvas.height,
-              currentHands,
-              () => {
-                // Punch hit callback
-                soundFx.playPunch();
-                const objState = controlledObjectManager.getState();
-                fireSystemRef.current.triggerPunchBurst(
-                  objState.x,
-                  objState.y,
-                  objState.radius * 1.4,
-                  fireConfig
-                );
-              },
-              () => {
-                // Energy grab callback
-                soundFx.playEnergyLock();
-              }
-            );
-
-            controlledObjectManager.render(ctx, currentHands, fireConfig.scheme);
-          }
-
-          // 4. Render Fire Particle System
-          fireSystemRef.current.updateAndRender(ctx, fireConfig, activeFistsForFire);
-
-          // 5. Render Futuristic HUD Overlays
+          // 3. Render Futuristic HUD Overlays
           if (showHud) {
             renderFaceHud(ctx, detection.face);
             renderHandsHud(ctx, currentHands);
@@ -356,7 +290,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         cancelAnimationFrame(animFrameId.current);
       }
     };
-  }, [isStreaming, isMirrored, showHud, showObject, fireConfig, onDetectionUpdate, onFpsUpdate]);
+  }, [isStreaming, isMirrored, showHud, onDetectionUpdate, onFpsUpdate]);
 
   // Draw Face Bounding Box & HUD
   const renderFaceHud = (ctx: CanvasRenderingContext2D, face: DetectedFace | null) => {
@@ -443,68 +377,106 @@ export const CameraView: React.FC<CameraViewProps> = ({
     hands.forEach((hand) => {
       ctx.save();
 
+      // Render hand skeleton lines
+      const skeletonConnections = [
+        [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+        [0, 5], [5, 6], [6, 7], [7, 8], // Index
+        [5, 9], [9, 10], [10, 11], [11, 12], // Middle
+        [9, 13], [13, 14], [14, 15], [15, 16], // Ring
+        [13, 17], [17, 18], [18, 19], [19, 20], // Pinky
+        [0, 17], // Palm base
+      ];
+
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+      ctx.lineWidth = 1;
+      skeletonConnections.forEach(([i, j]) => {
+        const p1 = hand.landmarks[i];
+        const p2 = hand.landmarks[j];
+        if (p1 && p2) {
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+      });
+
+      // Finger tip nodes
+      [4, 8, 12, 16, 20].forEach((idx) => {
+        const pt = hand.landmarks[idx];
+        if (pt) {
+          ctx.fillStyle = idx === 8 ? '#00f0ff' : 'rgba(0, 240, 255, 0.6)';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, idx === 8 ? 3.5 : 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
       if (hand.isFist) {
-        // Fist is engulfed in fire; draw fiery knuckle targeting reticle and combustion points
-        ctx.strokeStyle = 'rgba(255, 140, 20, 0.8)';
+        // Fist: 3D CAD Move / Translation Reticle
+        ctx.strokeStyle = '#00f0ff';
         ctx.lineWidth = 2;
-        ctx.shadowColor = '#ff841f';
+        ctx.shadowColor = '#00f0ff';
         ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(hand.fistCenter.x, hand.fistCenter.y, hand.radius * 1.15, 0, Math.PI * 2);
+        ctx.arc(hand.fistCenter.x, hand.fistCenter.y, hand.radius * 0.95, 0, Math.PI * 2);
         ctx.stroke();
 
         // Knuckle nodes (landmarks 5, 9, 13, 17)
         [5, 9, 13, 17].forEach((idx) => {
           if (hand.landmarks[idx]) {
-            ctx.fillStyle = '#fff7c2';
-            ctx.shadowColor = '#ff841f';
-            ctx.shadowBlur = 8;
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 6;
             ctx.beginPath();
-            ctx.arc(hand.landmarks[idx].x, hand.landmarks[idx].y, 4.5, 0, Math.PI * 2);
+            ctx.arc(hand.landmarks[idx].x, hand.landmarks[idx].y, 3.5, 0, Math.PI * 2);
             ctx.fill();
           }
         });
 
-        // Fist Badge & Velocity indicator
-        const label = `🔥 FIRE FIST [${hand.velocity.speed > 550 ? 'PUNCHING' : 'CHARGED'}] ${hand.velocity.speed} px/s`;
+        // Move Grip Label
+        const label = `✊ FIST: MOVE / TRANSLATE [${Math.round(hand.velocity.speed)} px/s]`;
         ctx.font = 'bold 11px monospace';
         const w = ctx.measureText(label).width + 16;
         const lx = hand.fistCenter.x - w / 2;
-        const ly = hand.fistCenter.y + hand.radius + 20;
+        const ly = hand.fistCenter.y + hand.radius + 18;
 
-        ctx.fillStyle = 'rgba(20, 8, 0, 0.9)';
+        ctx.fillStyle = 'rgba(7, 14, 30, 0.9)';
         ctx.fillRect(lx, ly - 14, w, 20);
-        ctx.strokeStyle = hand.isPunching ? '#ef4444' : '#ff841f';
+        ctx.strokeStyle = '#00f0ff';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(lx, ly - 14, w, 20);
 
-        ctx.fillStyle = hand.isPunching ? '#fca5a5' : '#ffb347';
+        ctx.fillStyle = '#00f0ff';
         ctx.fillText(label, lx + 8, ly);
       } else if (hand.isPinching) {
-        // Pinching indicator (Object Grab)
-        ctx.strokeStyle = '#c084fc';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#c084fc';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(hand.landmarks[4].x, hand.landmarks[4].y, 14, 0, Math.PI * 2);
-        ctx.stroke();
+        // Pinching: 3D CAD Pen Down Drawing
+        const tip = hand.landmarks[8];
+        const thumb = hand.landmarks[4];
+        if (tip && thumb) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 14;
+          ctx.beginPath();
+          ctx.arc(tip.x, tip.y, 14, 0, Math.PI * 2);
+          ctx.stroke();
 
-        const label = `🤏 PINCH [OBJECT GRIP]`;
-        ctx.font = 'bold 11px monospace';
-        const w = ctx.measureText(label).width + 14;
-        const lx = hand.landmarks[4].x - w / 2;
-        const ly = hand.landmarks[4].y - 20;
+          const label = `🤏 PINCH: DRAWING 3D BLUEPRINT`;
+          ctx.font = 'bold 11px monospace';
+          const w = ctx.measureText(label).width + 14;
+          const lx = tip.x - w / 2;
+          const ly = tip.y - 20;
 
-        ctx.fillStyle = 'rgba(20, 10, 30, 0.9)';
-        ctx.fillRect(lx, ly - 14, w, 18);
-        ctx.strokeStyle = '#c084fc';
-        ctx.strokeRect(lx, ly - 14, w, 18);
+          ctx.fillStyle = 'rgba(7, 14, 30, 0.9)';
+          ctx.fillRect(lx, ly - 14, w, 18);
+          ctx.strokeStyle = '#00f0ff';
+          ctx.strokeRect(lx, ly - 14, w, 18);
 
-        ctx.fillStyle = '#e9d5ff';
-        ctx.fillText(label, lx + 7, ly);
+          ctx.fillStyle = '#00f0ff';
+          ctx.fillText(label, lx + 7, ly);
+        }
       } else if (hand.isOpenPalm) {
-        // Open palm: display clean cyan holographic ring confirming gesture
+        // Open palm: 3D Orbit / Rotation Reticle
         ctx.strokeStyle = '#00f0ff';
         ctx.lineWidth = 2;
         ctx.shadowColor = '#00f0ff';
@@ -518,18 +490,14 @@ export const CameraView: React.FC<CameraViewProps> = ({
         const cx = hand.palmCenter.x;
         const cy = hand.palmCenter.y;
         ctx.beginPath();
-        ctx.moveTo(cx - r - 6, cy);
-        ctx.lineTo(cx - r + 6, cy);
-        ctx.moveTo(cx + r - 6, cy);
-        ctx.lineTo(cx + r + 6, cy);
-        ctx.moveTo(cx, cy - r - 6);
-        ctx.lineTo(cx, cy - r + 6);
-        ctx.moveTo(cx, cy + r - 6);
-        ctx.lineTo(cx, cy + r + 6);
+        ctx.moveTo(cx - r - 6, cy); ctx.lineTo(cx - r + 6, cy);
+        ctx.moveTo(cx + r - 6, cy); ctx.lineTo(cx + r + 6, cy);
+        ctx.moveTo(cx, cy - r - 6); ctx.lineTo(cx, cy - r + 6);
+        ctx.moveTo(cx, cy + r - 6); ctx.lineTo(cx, cy + r + 6);
         ctx.stroke();
 
         // Palm Label
-        const label = `✋ OPEN PALM [TRACTOR BEAM]`;
+        const label = `✋ OPEN PALM: 3D ORBIT / ROTATE`;
         ctx.font = 'bold 11px monospace';
         const w = ctx.measureText(label).width + 14;
         const lx = cx - w / 2;
@@ -542,10 +510,85 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
         ctx.fillStyle = '#00f0ff';
         ctx.fillText(label, lx + 7, ly);
+      } else if (hand.isPointing) {
+        // Pointing gesture: 3D Holographic CAD Stylus Aiming
+        const tip = hand.landmarks[8];
+        if (tip) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 2;
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(tip.x, tip.y, 14, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Laser crosshair ticks
+          ctx.beginPath();
+          ctx.moveTo(tip.x - 20, tip.y); ctx.lineTo(tip.x + 20, tip.y);
+          ctx.moveTo(tip.x, tip.y - 20); ctx.lineTo(tip.x + 20, tip.y);
+          ctx.stroke();
+
+          const label = `☝️ CAD STYLUS [PINCH TO DRAW]`;
+          ctx.font = 'bold 11px monospace';
+          const w = ctx.measureText(label).width + 14;
+          const lx = tip.x - w / 2;
+          const ly = tip.y - 24;
+
+          ctx.fillStyle = 'rgba(7, 14, 30, 0.9)';
+          ctx.fillRect(lx, ly - 14, w, 18);
+          ctx.strokeStyle = '#00f0ff';
+          ctx.strokeRect(lx, ly - 14, w, 18);
+
+          ctx.fillStyle = '#00f0ff';
+          ctx.fillText(label, lx + 7, ly);
+        }
       }
 
       ctx.restore();
     });
+
+    // Dual-hand Zoom Measurement Span
+    if (hands.length >= 2) {
+      ctx.save();
+      const p1 = hands[0].isFist ? hands[0].fistCenter : hands[0].palmCenter;
+      const p2 = hands[1].isFist ? hands[1].fistCenter : hands[1].palmCenter;
+      const dist = Math.round(Math.hypot(p1.x - p2.x, p1.y - p2.y));
+
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2;
+      const zoomText = `↔ DUAL-HAND ZOOM [${dist}px]`;
+      ctx.font = 'bold 10px monospace';
+      const zw = ctx.measureText(zoomText).width + 14;
+
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(6, 12, 26, 0.9)';
+      ctx.fillRect(midX - zw / 2, midY - 10, zw, 16);
+      ctx.strokeStyle = '#00f0ff';
+      ctx.strokeRect(midX - zw / 2, midY - 10, zw, 16);
+
+      ctx.fillStyle = '#00f0ff';
+      ctx.fillText(zoomText, midX - zw / 2 + 7, midY + 2);
+      ctx.restore();
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
   };
 
   return (
@@ -572,85 +615,22 @@ export const CameraView: React.FC<CameraViewProps> = ({
         } ${isStreaming ? 'opacity-100' : 'opacity-0'}`}
       />
 
-      {/* High-Resolution Overlay Canvas */}
+      {/* High-Resolution Overlay Canvas with Pointer Events for Direct Drawing */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none z-10 ${
-          isStreaming ? 'opacity-100' : 'opacity-0'
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        className={`absolute inset-0 w-full h-full object-cover z-10 cursor-crosshair ${
+          isStreaming ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
-
-      {/* Palm Quenched Flash Confirmation Effect */}
-      {palmQuenchedFlash && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-950/90 border border-cyan-400 text-cyan-300 font-mono text-xs shadow-[0_0_20px_#00f0ff] animate-pulse">
-          <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-          <span>PALM CONFIRMED — FLAME QUENCHED</span>
-        </div>
-      )}
-
-      {/* Punch Strike Flash Alert */}
-      {punchStrikeFlash && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-red-950/90 via-orange-950/90 to-red-950/90 border border-orange-500 text-orange-300 font-mono text-xs shadow-[0_0_25px_rgba(255,80,0,0.8)] animate-bounce">
-          <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
-          <span>{punchStrikeFlash}</span>
-        </div>
-      )}
-
-      {/* Interactive Object Floating Toolbar (Top Right) */}
-      {isStreaming && (
-        <div className="absolute top-4 right-4 z-30 flex flex-col gap-1.5 p-2 rounded-xl bg-[#071126]/85 border border-cyan-500/30 backdrop-blur-md shadow-[0_0_15px_rgba(0,0,0,0.6)]">
-          <div className="text-[10px] font-mono text-cyan-400 px-1 font-bold flex items-center justify-between">
-            <span>AR OBJECT:</span>
-            <button
-              onClick={() => {
-                soundFx.playBeep(900);
-                if (canvasRef.current) {
-                  controlledObjectManager.resetPosition(canvasRef.current.width, canvasRef.current.height);
-                }
-              }}
-              title="Reset Object Position to Center"
-              className="text-slate-400 hover:text-cyan-300 p-0.5"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1 text-[10px] font-mono">
-            {[
-              { id: 'fire_orb', label: 'Orb', icon: Flame },
-              { id: 'cyber_cube', label: 'Cube', icon: Box },
-              { id: 'phoenix_core', label: 'Phoenix', icon: Sparkles },
-              { id: 'quantum_shield', label: 'Shield', icon: Shield },
-            ].map((obj) => {
-              const Icon = obj.icon;
-              const isSelected = activeObjectType === obj.id;
-              return (
-                <button
-                  key={obj.id}
-                  onClick={() => {
-                    soundFx.playBeep(1050);
-                    setActiveObjectType(obj.id as ControlledObjectType);
-                    controlledObjectManager.setType(obj.id as ControlledObjectType);
-                  }}
-                  className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
-                    isSelected
-                      ? 'bg-cyan-500/25 border border-cyan-400/50 text-cyan-300 font-bold'
-                      : 'bg-slate-900/60 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-3 h-3 text-cyan-400" />
-                  <span>{obj.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Welcome & Permission Prompt Overlay (when camera not streaming) */}
       {!isStreaming && !cameraError && (
         <div className="relative z-20 text-center max-w-lg p-6 sm:p-8 flex flex-col items-center">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-600/20 to-orange-500/20 border border-cyan-400/40 flex items-center justify-center mb-5 shadow-[0_0_25px_rgba(0,240,255,0.25)]">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 via-blue-600/20 to-teal-500/20 border border-cyan-400/40 flex items-center justify-center mb-5 shadow-[0_0_25px_rgba(0,240,255,0.25)]">
             <Camera className="w-10 h-10 text-cyan-400 animate-pulse" />
           </div>
 
@@ -658,24 +638,24 @@ export const CameraView: React.FC<CameraViewProps> = ({
             WELCOME TO <span className="text-cyan-400">V CAM</span>
           </h2>
           <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-            Real-time browser vision neural engine. Detects facial expressions, triggers the
-            tracked <strong>Fire Fist</strong>, and lets you <strong>control interactive AR objects</strong> with hand gestures.
+            Real-time browser neural vision engine. Detects facial expressions, analyzes hand gestures,
+            and allows you to <strong>draw & control 3D blueprints in mid-air</strong>.
           </p>
 
           {/* Feature Highlights Grid */}
           <div className="grid grid-cols-2 gap-3 w-full mb-6 text-left">
             <div className="p-3 rounded-lg bg-[#0b1735]/80 border border-cyan-500/20 flex items-start gap-2.5">
-              <Flame className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+              <Pencil className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs font-semibold text-white">Fire Fist & Punch</div>
-                <div className="text-[11px] text-slate-400">Clench fist to ignite flame; punch to blast</div>
+                <div className="text-xs font-semibold text-white">In-Air 3D CAD Drawing</div>
+                <div className="text-[11px] text-slate-400">Pinch or mouse-drag to construct 3D blueprints</div>
               </div>
             </div>
             <div className="p-3 rounded-lg bg-[#0b1735]/80 border border-cyan-500/20 flex items-start gap-2.5">
-              <Sparkles className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+              <Hand className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs font-semibold text-white">Object Telekinesis</div>
-                <div className="text-[11px] text-slate-400">Attract with palm, grab with pinch, strike</div>
+                <div className="text-xs font-semibold text-white">Spatial Gestures</div>
+                <div className="text-[11px] text-slate-400">Fist = Move &bull; Palm = Orbit &bull; 2 Hands = Zoom</div>
               </div>
             </div>
           </div>
@@ -756,20 +736,18 @@ export const CameraView: React.FC<CameraViewProps> = ({
 
           <div className="w-[1px] h-5 bg-slate-700 mx-1" />
 
-          {/* Object Toggle */}
+          {/* Reset Transform */}
           <button
             onClick={() => {
-              soundFx.playBeep(800);
-              setShowObject(!showObject);
+              soundFx.playBeep(920);
+              if (canvasRef.current) {
+                blueprintEngine.resetTransform(canvasRef.current.width, canvasRef.current.height);
+              }
             }}
-            title={showObject ? 'Hide Controlled Object' : 'Show Controlled Object'}
-            className={`p-2 rounded-lg text-xs font-mono transition-colors ${
-              showObject
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}
+            title="Center & Reset Blueprint 3D View"
+            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-cyan-300 text-xs transition-colors"
           >
-            <Sparkles className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
           {/* Mirror Toggle */}

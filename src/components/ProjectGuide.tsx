@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Flame,
   Hand,
   Smile,
   ShieldCheck,
@@ -10,22 +9,27 @@ import {
   Layers,
   ChevronRight,
   Eye,
-  Radio,
   BookOpen,
   Play,
   RotateCcw,
+  Box,
+  Pencil,
+  Move,
+  Maximize2,
+  Grid,
+  Ruler,
+  Compass,
 } from 'lucide-react';
 
 interface ProjectGuideProps {
   onBackToStudio: () => void;
-  onLaunchTutorial?: () => void;
 }
 
 export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) => {
-  const [activeTab, setActiveTab] = useState<'gestures' | 'fire_fist' | 'objects' | 'face_mood' | 'architecture'>('gestures');
+  const [activeTab, setActiveTab] = useState<'blueprints' | 'gestures' | 'drawing' | 'face_mood' | 'architecture'>('drawing');
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fadeIn">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8 animate-fadeIn font-sans">
       {/* Top Banner */}
       <div className="relative hud-panel rounded-2xl p-6 sm:p-8 overflow-hidden border border-cyan-500/30">
         <div className="corner-bracket-tl" />
@@ -37,15 +41,14 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
           <div>
             <div className="flex items-center gap-2 mb-2 font-mono text-xs text-cyan-400">
               <BookOpen className="w-4 h-4" />
-              <span>PROJECT DOSSIER & COMPREHENSIVE GUIDE</span>
+              <span>PROJECT DOSSIER & COMPREHENSIVE USER GUIDE</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-wide">
-              V <span className="text-cyan-400">CAM</span> // Neural Vision & Gesture FX
+              V <span className="text-cyan-400">CAM</span> // 3D Blueprint CAD & Gesture Vision
             </h1>
             <p className="text-sm text-slate-300 mt-2 max-w-2xl leading-relaxed">
-              Explore the full system manual for V CAM. Learn how to ignite and punch with the
-              Fire Fist, levitate and control interactive holographic AR objects with your hands,
-              and analyze real-time facial expressions.
+              V CAM is a futuristic, browser-native computer vision platform that allows you to construct,
+              sketch, and manipulate 3D blueprints in mid-air using hand gestures and live facial analysis.
             </p>
           </div>
 
@@ -55,7 +58,7 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs tracking-wider uppercase font-mono shadow-[0_0_20px_rgba(0,240,255,0.35)] transition-all flex items-center gap-2 cursor-pointer"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>Enter Live Camera</span>
+              <span>Enter Live Studio</span>
             </button>
           </div>
         </div>
@@ -64,11 +67,11 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
       {/* Guide Navigation Tabs */}
       <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-xl bg-[#091329] border border-cyan-500/20 font-mono text-xs">
         {[
-          { id: 'gestures', label: '1. Hand Gestures', icon: Hand },
-          { id: 'fire_fist', label: '2. The Fire Fist & Punch', icon: Flame },
-          { id: 'objects', label: '3. Gesture-Controlled Objects', icon: Sparkles },
-          { id: 'face_mood', label: '4. Facial Mood Telemetry', icon: Smile },
-          { id: 'architecture', label: '5. Neural Architecture & Privacy', icon: Cpu },
+          { id: 'drawing', label: '1. In-Air 3D Drawing', icon: Pencil },
+          { id: 'gestures', label: '2. Spatial Hand Gestures', icon: Hand },
+          { id: 'blueprints', label: '3. 3D Blueprint Models', icon: Box },
+          { id: 'face_mood', label: '4. Face Mood Telemetry', icon: Smile },
+          { id: 'architecture', label: '5. Edge AI & Privacy', icon: Cpu },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -89,267 +92,206 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
         })}
       </div>
 
-      {/* Tab 1: Hand Gestures */}
-      {activeTab === 'gestures' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Gesture Card: Closed Fist */}
-            <div className="hud-panel rounded-xl p-5 border border-orange-500/30 flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center mb-4 text-orange-400">
-                  <Flame className="w-6 h-6" />
-                </div>
-                <div className="text-xs font-mono text-orange-400 uppercase tracking-wider mb-1">
-                  Primary Trigger
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Closed Fist (Fire Ignition)</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Clench all five fingers into a tight or semi-tight fist. The neural model tracks
-                  flexion on thumb, index, middle, ring, and pinky to erupt multi-layer flames around
-                  your hand in real time.
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-orange-300 flex items-center gap-1.5">
-                <ChevronRight className="w-3.5 h-3.5" />
-                <span>Result: Fire Fist Ignited 🔥</span>
-              </div>
-            </div>
-
-            {/* Gesture Card: Open Palm */}
-            <div className="hud-panel rounded-xl p-5 border border-cyan-500/30 flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center mb-4 text-cyan-300">
-                  <Hand className="w-6 h-6" />
-                </div>
-                <div className="text-xs font-mono text-cyan-400 uppercase tracking-wider mb-1">
-                  Quench & Attract
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Open Palm (Quench & Tractor)</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Spread your fingers open facing the camera. This quenches all fire instantly and
-                  activates the <strong>Tractor Beam</strong>, pulling interactive objects toward your
-                  hand like magnetic telekinesis!
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-cyan-300 flex items-center gap-1.5">
-                <ChevronRight className="w-3.5 h-3.5" />
-                <span>Result: Flames Quenched ✋ + Object Attracted</span>
-              </div>
-            </div>
-
-            {/* Gesture Card: Pinch & Grab */}
-            <div className="hud-panel rounded-xl p-5 border border-purple-500/30 flex flex-col justify-between">
-              <div>
-                <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center mb-4 text-purple-300">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div className="text-xs font-mono text-purple-400 uppercase tracking-wider mb-1">
-                  Tactile Lock
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Pinch / Proximity Hold</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Bring your thumb and index tips together (pinch) near the interactive object, or hold
-                  your fist close to it. The object snaps into your hand grip so you can drag and steer
-                  it across the screen!
-                </p>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] font-mono text-purple-300 flex items-center gap-1.5">
-                <ChevronRight className="w-3.5 h-3.5" />
-                <span>Result: Object Grabbed & Dragged 🤏</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Dual-Hand Mechanics Card */}
-          <div className="hud-panel rounded-xl p-6 border border-cyan-500/20">
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-cyan-400" />
-              <span>Advanced Dual-Hand Controls</span>
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              V CAM tracks <strong>both hands simultaneously</strong> at 60 FPS:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="p-3 rounded-lg bg-[#071126] border border-cyan-500/20">
-                <div className="text-cyan-300 font-bold mb-1">Dual Fire Fists</div>
-                <p className="text-slate-400 text-[11px]">
-                  Close both left and right hands into fists to ignite dual blazing fireballs at the
-                  same time!
-                </p>
-              </div>
-              <div className="p-3 rounded-lg bg-[#071126] border border-cyan-500/20">
-                <div className="text-cyan-300 font-bold mb-1">Dual-Hand Object Scaling</div>
-                <p className="text-slate-400 text-[11px]">
-                  Spread both hands far apart to expand the interactive object up to 95px diameter.
-                  Bring hands together to concentrate it down to a dense micro-core!
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 2: The Fire Fist & Punch */}
-      {activeTab === 'fire_fist' && (
-        <div className="space-y-6">
-          <div className="hud-panel rounded-xl p-6 border border-orange-500/30">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-orange-500/20 border border-orange-400/40 text-orange-400">
-                <Flame className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">The Fire Fist Engine Mechanics</h2>
-                <p className="text-xs text-slate-400">
-                  How real-time knuckle combustion, particle buoyancy, and kinetic punching work
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
-              <div className="p-4 rounded-lg bg-[#071126] border border-slate-800 space-y-2">
-                <div className="font-mono font-bold text-orange-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-orange-400" />
-                  1. Knuckle Combustion Grid
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  When you clench your fist, MediaPipe landmarks 5, 9, 13, and 17 (the MCP knuckle
-                  joints) ignite into concentrated heat nodes. The system draws from an object-pooled
-                  particle system with zero garbage collection lag.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-slate-800 space-y-2">
-                <div className="font-mono font-bold text-cyan-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                  2. Kinetic Punch Strike
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  When you thrust your closed fist forward or across the frame at over 550 pixels per
-                  second, the engine detects a <strong>Punch Strike</strong>! This triggers an expanding
-                  shockwave ring, 24 high-velocity spark fragments, and an explosive sound blast.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-slate-800 space-y-2">
-                <div className="font-mono font-bold text-amber-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  3. Distance & Depth Scaling
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  The flame effect measures the physical distance between wrist landmark 0 and middle
-                  knuckle 9. Move your fist close to the camera for an immense screen-filling blaze,
-                  or step back for a tight, concentrated flame.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Color Schemes */}
-          <div className="hud-panel rounded-xl p-6 border border-cyan-500/20">
-            <h3 className="text-sm font-mono font-bold text-cyan-300 uppercase tracking-wider mb-3">
-              Flame Color Presets Available in Header
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono text-xs">
-              <div className="p-3 rounded-lg bg-[#081226] border border-amber-500/30 text-amber-300">
-                <div className="w-4 h-4 mx-auto rounded-full bg-amber-400 shadow-[0_0_10px_#f59e0b] mb-2" />
-                <span className="font-bold block">Inferno Orange</span>
-                <span className="text-[10px] text-slate-400">Classic blazing fire</span>
-              </div>
-              <div className="p-3 rounded-lg bg-[#081226] border border-cyan-500/30 text-cyan-300">
-                <div className="w-4 h-4 mx-auto rounded-full bg-cyan-400 shadow-[0_0_10px_#00f0ff] mb-2" />
-                <span className="font-bold block">Plasma Cyan</span>
-                <span className="text-[10px] text-slate-400">Futuristic cyber flame</span>
-              </div>
-              <div className="p-3 rounded-lg bg-[#081226] border border-purple-500/30 text-purple-300">
-                <div className="w-4 h-4 mx-auto rounded-full bg-purple-400 shadow-[0_0_10px_#c084fc] mb-2" />
-                <span className="font-bold block">Void Violet</span>
-                <span className="text-[10px] text-slate-400">Mystical phoenix flame</span>
-              </div>
-              <div className="p-3 rounded-lg bg-[#081226] border border-emerald-500/30 text-emerald-300">
-                <div className="w-4 h-4 mx-auto rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] mb-2" />
-                <span className="font-bold block">Emerald Green</span>
-                <span className="text-[10px] text-slate-400">Alchemical green fire</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Controlled Objects */}
-      {activeTab === 'objects' && (
+      {/* Tab 1: In-Air 3D Drawing Guide */}
+      {activeTab === 'drawing' && (
         <div className="space-y-6">
           <div className="hud-panel rounded-xl p-6 border border-cyan-500/30">
-            <h2 className="text-lg font-bold text-white mb-2">
-              Gesture-Controlled AR Objects
-            </h2>
-            <p className="text-xs text-slate-300 leading-relaxed mb-6">
-              V CAM spawns responsive virtual objects directly into the camera workspace that obey
-              physical gravity, friction, and hand forces. You can switch between 4 different objects:
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-[#071126] border border-amber-500/30 space-y-2">
-                <div className="font-bold text-amber-300 font-mono">1. Fire Plasma Orb</div>
-                <p className="text-slate-400 text-[11px]">
-                  A blazing miniature star with swirling solar flare rings, incandescent corona, and
-                  particle smoke tail.
-                </p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-400">
+                <Pencil className="w-6 h-6" />
               </div>
-
-              <div className="p-4 rounded-xl bg-[#071126] border border-cyan-500/30 space-y-2">
-                <div className="font-bold text-cyan-300 font-mono">2. Holographic Cyber Cube</div>
-                <p className="text-slate-400 text-[11px]">
-                  A 3D rotating isometric wireframe cube that spins along 3 axes with glowing vertices
-                  and central power glyph.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#071126] border border-fuchsia-500/30 space-y-2">
-                <div className="font-bold text-fuchsia-300 font-mono">3. Phoenix Core</div>
-                <p className="text-slate-400 text-[11px]">
-                  An ethereal fire bird entity with flapping glowing wings and an incandescent white
-                  energy core.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#071126] border border-teal-500/30 space-y-2">
-                <div className="font-bold text-teal-300 font-mono">4. Quantum Shield</div>
-                <p className="text-slate-400 text-[11px]">
-                  A hexagonal defensive plasma shield with pulsating concentric barrier rings and
-                  energy deflection fields.
+              <div>
+                <h2 className="text-lg font-bold text-white font-mono uppercase tracking-wider">
+                  How In-Air 3D Drawing Works
+                </h2>
+                <p className="text-xs text-cyan-300 font-mono">
+                  Construct custom wireframes and mechanical parts in real-time space
                 </p>
               </div>
             </div>
 
-            {/* How to interact */}
-            <div className="mt-6 p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-3">
-              <div className="font-mono font-bold text-cyan-300 text-xs">
-                INTERACTIVE GESTURE MATRIX FOR OBJECTS
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <div className="p-4 rounded-xl bg-[#0a152e] border border-cyan-500/20 space-y-3">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center font-mono font-bold">
+                  1
+                </div>
+                <h3 className="font-semibold text-white text-sm">Aim with Index Finger</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Raise your hand and point your index finger. A high-precision holographic reticle crosshair
+                  follows your fingertip with real-time CAD coordinates.
+                </p>
               </div>
-              <ul className="space-y-2 text-xs text-slate-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-mono">&bull;</span>
-                  <span>
-                    <strong>Open Palm Attraction:</strong> Point an open palm towards the object to
-                    project a tractor beam and summon it across the screen.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-mono">&bull;</span>
-                  <span>
-                    <strong>Pinch / Fist Lock:</strong> Pinch or bring your fist within touching
-                    range to lock onto the object. Move your hand to guide it anywhere.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-mono">&bull;</span>
-                  <span>
-                    <strong>Fire Fist Punch Blast:</strong> Punch towards the object to impart huge
-                    kinetic momentum! The object will ricochet off canvas boundaries with elastic
-                    bouncing.
-                  </span>
-                </li>
-              </ul>
+
+              <div className="p-4 rounded-xl bg-[#0a152e] border border-cyan-500/20 space-y-3">
+                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-mono font-bold">
+                  2
+                </div>
+                <h3 className="font-semibold text-white text-sm">Pinch to Touch Down Pen</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Touch your thumb and index fingertip together (Pinch gesture). This initiates <strong>Pen Down</strong>.
+                  Move your hand to draw continuous 3D strokes or drag CAD lines.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#0a152e] border border-cyan-500/20 space-y-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center font-mono font-bold">
+                  3
+                </div>
+                <h3 className="font-semibold text-white text-sm">Release to Commit Stroke</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Open your pinch to lift the pen. Your drawn stroke snaps into the 3D model space and
+                  rotates, moves, and zooms with the entire blueprint!
+                </p>
+              </div>
+            </div>
+
+            {/* Drawing Tools Details */}
+            <div className="mt-8 pt-6 border-t border-cyan-500/20 space-y-4">
+              <h3 className="text-sm font-bold text-cyan-300 font-mono uppercase">
+                Available CAD Drawing Tools:
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                <div className="p-3 rounded-lg bg-[#071126] border border-slate-800">
+                  <span className="text-cyan-400 font-bold block mb-1">✍️ Freehand Pen</span>
+                  <span className="text-slate-400">Continuous smooth paths for organic shapes and hand sketches.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-[#071126] border border-slate-800">
+                  <span className="text-cyan-400 font-bold block mb-1">📏 Straight CAD Line</span>
+                  <span className="text-slate-400">Pinch and drag to anchor precise straight line segments.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-[#071126] border border-slate-800">
+                  <span className="text-cyan-400 font-bold block mb-1">📦 3D Box Wireframe</span>
+                  <span className="text-cyan-400 font-bold block mb-1"></span>
+                  <span className="text-slate-400">Drag to generate full 3D cubic structures with bounding depth.</span>
+                </div>
+                <div className="p-3 rounded-lg bg-[#071126] border border-slate-800">
+                  <span className="text-cyan-400 font-bold block mb-1">⭕ 3D Circular Ring</span>
+                  <span className="text-slate-400">Create cylindrical hoops and rotational circular geometry.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Direct Canvas Mouse Drawing Support */}
+            <div className="mt-4 p-3 rounded-lg bg-cyan-950/40 border border-cyan-500/20 flex items-center gap-3 text-xs text-slate-300">
+              <Sparkles className="w-5 h-5 text-cyan-400 shrink-0" />
+              <span>
+                <strong>Desktop Mouse Support:</strong> In addition to mid-air gestures, you can click and drag directly
+                on the camera canvas with your mouse or stylus for millimeter precision!
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Spatial Hand Gestures */}
+      {activeTab === 'gestures' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="hud-panel rounded-xl p-5 border border-cyan-500/25 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-teal-500/20 text-teal-300">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm font-mono">Pinch (Thumb + Index)</h3>
+                  <span className="text-[11px] text-teal-400 font-mono">Pen Down Drawing</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Touching thumb tip and index tip initiates the CAD stylus. Draw lines, shapes, or wireframe blueprints
+                in real-time space.
+              </p>
+            </div>
+
+            <div className="hud-panel rounded-xl p-5 border border-cyan-500/25 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
+                  <Move className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm font-mono">Closed Fist</h3>
+                  <span className="text-[11px] text-blue-400 font-mono">3D Grip &amp; Translate</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Clenching your fingers into a fist locks the CAD object in place. Moving your fist smoothly translates
+                the blueprint across the screen.
+              </p>
+            </div>
+
+            <div className="hud-panel rounded-xl p-5 border border-cyan-500/25 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300">
+                  <Hand className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm font-mono">Open Palm</h3>
+                  <span className="text-[11px] text-indigo-400 font-mono">3D Orbit &amp; Rotation</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Spreading open your palm engages the 3D rotation gimbal. Moving your hand horizontally rotates Yaw, and
+                vertically rotates Pitch.
+              </p>
+            </div>
+
+            <div className="hud-panel rounded-xl p-5 border border-cyan-500/25 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-300">
+                  <Maximize2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm font-mono">Dual Hands</h3>
+                  <span className="text-[11px] text-cyan-400 font-mono">Zoom In / Zoom Out</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Raising both hands into view activates dual-hand scaling. Move your hands farther apart to zoom in, or
+                closer together to zoom out.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: 3D Blueprint Models */}
+      {activeTab === 'blueprints' && (
+        <div className="space-y-6">
+          <div className="hud-panel rounded-xl p-6 border border-cyan-500/30">
+            <h2 className="text-base font-bold text-white font-mono uppercase mb-4">
+              Included 3D Blueprint Schemas
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs font-mono">
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <span className="text-cyan-300 font-bold text-sm block">Blank Canvas</span>
+                <p className="text-slate-400 leading-relaxed">
+                  Start with zero preset geometry. 100% created by your own hand-drawn lines in 3D air.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <span className="text-cyan-300 font-bold text-sm block">Cube &amp; Pyramid</span>
+                <p className="text-slate-400 leading-relaxed">
+                  Classic geometric wireframes with vertex nodes and automatic dimension callouts.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <span className="text-cyan-300 font-bold text-sm block">Cylinder &amp; Sphere</span>
+                <p className="text-slate-400 leading-relaxed">
+                  Curved mathematical meshes computed with trigonometric ribs and geodesic vertices.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <span className="text-cyan-300 font-bold text-sm block">Quadcopter Drone Chassis</span>
+                <p className="text-slate-400 leading-relaxed">
+                  Technical mechanical schematic featuring central fuselage and four rotor pylons.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <span className="text-cyan-300 font-bold text-sm block">Arc Reactor Core</span>
+                <p className="text-slate-400 leading-relaxed">
+                  Dual toroidal ring reactor with magnetic confinement pillars and central focal node.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -358,52 +300,39 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
       {/* Tab 4: Facial Mood Telemetry */}
       {activeTab === 'face_mood' && (
         <div className="space-y-6">
-          <div className="hud-panel rounded-xl p-6 border border-cyan-500/20">
-            <h2 className="text-lg font-bold text-white mb-2">Facial Expression Architecture</h2>
+          <div className="hud-panel rounded-xl p-6 border border-cyan-500/30">
+            <h2 className="text-base font-bold text-white font-mono uppercase mb-4">
+              Real-Time Facial Expression Estimation
+            </h2>
             <p className="text-xs text-slate-300 leading-relaxed mb-6">
-              Using MediaPipe FaceLandmarker with 52 geometric blendshapes, V CAM analyzes muscle
-              activations across the lips, brow, eyes, and jaw to categorize 4 distinct expressions:
+              V CAM tracks 478 3D facial landmarks and blendshapes to estimate visible expressions in real-time.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div className="p-4 rounded-lg bg-[#071126] border border-amber-500/30">
-                <div className="font-bold text-amber-400 mb-1">Happy 😊</div>
-                <p className="text-slate-400 text-[11px]">
-                  Detected via <code>mouthSmileLeft</code> and <code>mouthSmileRight</code> blendshapes.
-                </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono">
+              <div className="p-3 rounded-lg bg-[#091530] border border-cyan-500/20">
+                <span className="text-2xl block mb-1">😊</span>
+                <span className="text-xs text-emerald-400 font-bold">Happy</span>
+                <p className="text-[10px] text-slate-400 mt-1">Lip corner puller blendshapes</p>
               </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-teal-500/30">
-                <div className="font-bold text-teal-300 mb-1">Neutral 😐</div>
-                <p className="text-slate-400 text-[11px]">
-                  Detected during relaxed resting facial baseline with low activation on smiles or frowns.
-                </p>
+              <div className="p-3 rounded-lg bg-[#091530] border border-cyan-500/20">
+                <span className="text-2xl block mb-1">😐</span>
+                <span className="text-xs text-slate-300 font-bold">Neutral</span>
+                <p className="text-[10px] text-slate-400 mt-1">Baseline relaxed facial tension</p>
               </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-blue-500/30">
-                <div className="font-bold text-blue-300 mb-1">Sad 😔</div>
-                <p className="text-slate-400 text-[11px]">
-                  Detected via <code>mouthFrownLeft/Right</code>, <code>browDown</code>, and <code>mouthPress</code>.
-                </p>
+              <div className="p-3 rounded-lg bg-[#091530] border border-cyan-500/20">
+                <span className="text-2xl block mb-1">😢</span>
+                <span className="text-xs text-blue-400 font-bold">Sad</span>
+                <p className="text-[10px] text-slate-400 mt-1">Lip corner depressor activation</p>
               </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-cyan-500/30">
-                <div className="font-bold text-cyan-300 mb-1">Surprised 😲</div>
-                <p className="text-slate-400 text-[11px]">
-                  Detected via <code>jawOpen</code>, <code>browInnerUp</code>, and <code>eyeWide</code> blendshapes.
-                </p>
+              <div className="p-3 rounded-lg bg-[#091530] border border-cyan-500/20">
+                <span className="text-2xl block mb-1">😲</span>
+                <span className="text-xs text-amber-400 font-bold">Surprised</span>
+                <p className="text-[10px] text-slate-400 mt-1">Jaw drop and eyebrow elevation</p>
               </div>
             </div>
 
-            <div className="mt-6 p-4 rounded-lg bg-[#061022] border border-slate-800 text-xs text-slate-300">
-              <div className="font-mono font-bold text-cyan-400 mb-1">
-                Flicker-Free Exponential Moving Average (EMA)
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Raw computer vision scores can fluctuate frame-to-frame. V CAM applies an EMA temporal
-                filter (factor &alpha; = 0.25) across frames to provide smooth, stable confidence
-                meters without jitter.
-              </p>
+            <div className="mt-6 p-3 rounded-lg bg-amber-950/30 border border-amber-500/30 text-[11px] text-amber-200 font-mono">
+              Notice: Mood results are approximate facial-expression estimates, not definitive conclusions about a person&apos;s actual emotional state.
             </div>
           </div>
         </div>
@@ -412,41 +341,29 @@ export const ProjectGuide: React.FC<ProjectGuideProps> = ({ onBackToStudio }) =>
       {/* Tab 5: Architecture & Privacy */}
       {activeTab === 'architecture' && (
         <div className="space-y-6">
-          <div className="hud-panel rounded-xl p-6 border border-cyan-500/20">
-            <h2 className="text-lg font-bold text-white mb-2">
-              Privacy by Design & Technical Specifications
+          <div className="hud-panel rounded-xl p-6 border border-cyan-500/30 space-y-4">
+            <h2 className="text-base font-bold text-white font-mono uppercase">
+              100% On-Device Neural Edge Pipeline
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-4 text-xs">
-              <div className="p-4 rounded-lg bg-[#071126] border border-emerald-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-mono font-bold">
-                  <ShieldCheck className="w-5 h-5" />
-                  <span>100% Client-Side</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Zero Server Uploads</span>
                 </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  No video streams, face frames, or biometric vectors are ever sent to an external
-                  server. Every calculation executes in-memory inside your local browser via WebAssembly.
+                <p className="text-slate-400 leading-relaxed">
+                  Your webcam stream never leaves your device. All computer vision inference executes inside
+                  your local WebAssembly/WebGL thread.
                 </p>
               </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-cyan-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-cyan-400 font-mono font-bold">
-                  <Cpu className="w-5 h-5" />
-                  <span>WASM + WebGL GPU</span>
+              <div className="p-4 rounded-xl bg-[#091530] border border-cyan-500/20 space-y-2">
+                <div className="flex items-center gap-2 text-cyan-400 font-bold">
+                  <Zap className="w-4 h-4" />
+                  <span>60 FPS Hardware Acceleration</span>
                 </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  MediaPipe Vision tasks utilize hardware-accelerated WebGL / GPU delegates for
-                  sub-16ms inference latency, preserving a smooth 60 FPS refresh rate.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-[#071126] border border-blue-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 font-mono font-bold">
-                  <Radio className="w-5 h-5" />
-                  <span>Web Audio Synthesis</span>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Audio sound effects (ignite whooshes, steam quenches, punch explosions) are synthesized
-                  algorithmically via the Web Audio API without needing external MP3 downloads.
+                <p className="text-slate-400 leading-relaxed">
+                  WebAssembly CPU SIMD and WebGL GPU shaders deliver low latency and high frame rates on modern
+                  desktops, laptops, and mobile devices.
                 </p>
               </div>
             </div>

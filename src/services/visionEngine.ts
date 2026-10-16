@@ -27,10 +27,13 @@ export class VisionEngine {
   };
 
   // Hysteresis buffers for hand gestures per hand index
-  private gestureHistory: Map<number, { isFistCount: number; isPalmCount: number; currentGesture: 'closed_fist' | 'open_palm' | 'pinch' | 'unknown' }> = new Map();
+  private gestureHistory: Map<number, { isFistCount: number; isPalmCount: number; currentGesture: 'closed_fist' | 'open_palm' | 'pinch' | 'pointing' | 'unknown' }> = new Map();
 
   // Velocity tracking per hand index
   private prevHandPositions: Map<number, { x: number; y: number; time: number }> = new Map();
+
+  // Monotonically increasing timestamp tracker for MediaPipe
+  private lastTimestampMs: number = -1;
 
   public async initialize(onProgress?: (status: string) => void): Promise<boolean> {
     if (this.isReady) return true;
@@ -62,39 +65,80 @@ export class VisionEngine {
         throw new Error('Unable to initialize MediaPipe Vision WASM runtime.');
       }
 
+      const hasWebGL = (() => {
+        try {
+          const canvas = document.createElement('canvas');
+          return !!(window.WebGLRenderingContext && (canvas.getContext('webgl2') || canvas.getContext('webgl')));
+        } catch {
+          return false;
+        }
+      })();
+      const preferredDelegate = hasWebGL ? 'GPU' : 'CPU';
+
       onProgress?.('Loading Neural Face Expression Model...');
-      this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numFaces: 1,
-        outputFaceBlendshapes: true,
-        outputFacialTransformationMatrixes: false,
-      });
+      try {
+        this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: preferredDelegate,
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: false,
+        });
+      } catch (err) {
+        console.info('FaceLandmarker GPU setup fell back to CPU:', err);
+        this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: 'CPU',
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: false,
+        });
+      }
 
       onProgress?.('Loading Hand Landmark & Gesture Tracker...');
-      this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numHands: 2,
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
+      try {
+        this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: preferredDelegate,
+          },
+          runningMode: 'VIDEO',
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      } catch (err) {
+        console.info('HandLandmarker GPU setup fell back to CPU:', err);
+        this.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+            delegate: 'CPU',
+          },
+          runningMode: 'VIDEO',
+          numHands: 2,
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      }
 
       this.isReady = true;
       this.isInitializing = false;
       onProgress?.('Vision Neural Models Ready');
       return true;
     } catch (err: any) {
-      console.error('VisionEngine initialization failed:', err);
+      console.warn('VisionEngine initialization warning:', err);
       this.initError = err?.message || 'Failed to initialize vision models';
       this.isInitializing = false;
       return false;
@@ -109,6 +153,21 @@ export class VisionEngine {
     };
   }
 
+  public processFrame(
+    video: HTMLVideoElement,
+    canvasWidth: number,
+    canvasHeight: number,
+    isMirrored: boolean = true
+  ): VisionDetectionResult {
+    return this.processVideoFrame(
+      video,
+      performance.now(),
+      canvasWidth,
+      canvasHeight,
+      isMirrored
+    );
+  }
+
   public processVideoFrame(
     video: HTMLVideoElement,
     timestamp: number,
@@ -116,9 +175,20 @@ export class VisionEngine {
     canvasHeight: number,
     isMirrored: boolean = true
   ): VisionDetectionResult {
-    if (!this.isReady || !video || video.readyState < 2) {
+    if (
+      !this.isReady ||
+      !video ||
+      video.readyState < 2 ||
+      video.videoWidth === 0 ||
+      video.videoHeight === 0
+    ) {
       return { face: null, hands: [], timestamp };
     }
+
+    // MediaPipe Tasks requires strictly monotonic integer timestamps
+    const rawTime = Math.round(timestamp || performance.now());
+    const safeTimestamp = Math.max(rawTime, this.lastTimestampMs + 1);
+    this.lastTimestampMs = safeTimestamp;
 
     let detectedFace: DetectedFace | null = null;
     const detectedHands: DetectedHand[] = [];
@@ -126,7 +196,7 @@ export class VisionEngine {
     // 1. Process Face Landmarker
     if (this.faceLandmarker) {
       try {
-        const faceResult = this.faceLandmarker.detectForVideo(video, timestamp);
+        const faceResult = this.faceLandmarker.detectForVideo(video, safeTimestamp);
         if (faceResult && faceResult.faceLandmarks && faceResult.faceLandmarks.length > 0) {
           const landmarks = faceResult.faceLandmarks[0];
 
@@ -270,7 +340,7 @@ export class VisionEngine {
     // 2. Process Hand Landmarker
     if (this.handLandmarker) {
       try {
-        const handResult = this.handLandmarker.detectForVideo(video, timestamp);
+        const handResult = this.handLandmarker.detectForVideo(video, safeTimestamp);
         if (handResult && handResult.landmarks && handResult.landmarks.length > 0) {
           for (let i = 0; i < handResult.landmarks.length; i++) {
             const rawLandmarks = handResult.landmarks[i];
@@ -332,9 +402,12 @@ export class VisionEngine {
 
             // Pinch calculation (thumb tip 4 to index tip 8)
             const pinchDist = Math.hypot(pts[4].x - pts[8].x, pts[4].y - pts[8].y);
-            const isPinching = pinchDist < palmDist * 0.35 && !isRawFist;
+            const isPinching = pinchDist < palmDist * 0.45 && !isRawFist;
 
-            const isRawOpenPalm = extendedFingersCount >= 3 && thumbCurl < 0.55 && !isPinching;
+            // Pointing calculation (index extended while other fingers folded)
+            const isPointing = indexCurl < 0.42 && middleCurl > 0.48 && ringCurl > 0.48 && !isRawFist;
+
+            const isRawOpenPalm = extendedFingersCount >= 3 && thumbCurl < 0.55 && !isPinching && !isPointing;
 
             // Hysteresis smoothing
             let history = this.gestureHistory.get(i);
@@ -353,6 +426,10 @@ export class VisionEngine {
               history.isFistCount = 0;
               history.isPalmCount = 0;
               history.currentGesture = 'pinch';
+            } else if (isPointing) {
+              history.isFistCount = 0;
+              history.isPalmCount = 0;
+              history.currentGesture = 'pointing';
             } else if (isRawOpenPalm) {
               history.isPalmCount++;
               history.isFistCount = 0;
@@ -399,6 +476,7 @@ export class VisionEngine {
               isOpenPalm: history.currentGesture === 'open_palm',
               pinchDistance: Math.round(pinchDist),
               isPinching,
+              isPointing,
               fistCenter: { x: fistCenterX, y: fistCenterY },
               palmCenter: { x: palmCenterX, y: palmCenterY },
               radius: handRadius,
@@ -415,7 +493,6 @@ export class VisionEngine {
                 vy: Math.round(vy),
                 speed: Math.round(speed),
               },
-              isPunching,
             });
           }
         }
@@ -441,6 +518,7 @@ export class VisionEngine {
     this.faceLandmarker = null;
     this.handLandmarker = null;
     this.isReady = false;
+    this.lastTimestampMs = -1;
     this.gestureHistory.clear();
   }
 }

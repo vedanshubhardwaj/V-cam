@@ -7,7 +7,7 @@ export interface ExpressionScores {
   Surprised: number;
 }
 
-export type GestureType = 'closed_fist' | 'open_palm' | 'pinch' | 'unknown';
+export type GestureType = 'closed_fist' | 'open_palm' | 'pinch' | 'pointing' | 'unknown';
 
 export interface DetectedFace {
   boundingBox: {
@@ -37,11 +37,11 @@ export interface DetectedHand {
   };
   pinchDistance: number;
   isPinching: boolean;
+  isPointing: boolean;
   landmarks: { x: number; y: number; z: number }[];
   isFist: boolean;
   isOpenPalm: boolean;
   velocity: { vx: number; vy: number; speed: number };
-  isPunching: boolean;
 }
 
 export interface VisionDetectionResult {
@@ -50,34 +50,53 @@ export interface VisionDetectionResult {
   timestamp: number;
 }
 
-export type FireColorScheme = 'classic' | 'plasma' | 'violet' | 'emerald';
+// 3D Holographic CAD Blueprint Types
+export type BlueprintColorTheme = 'cyan' | 'emerald' | 'amber' | 'violet' | 'white';
 
-export interface FireConfig {
-  scheme: FireColorScheme;
-  intensity: number; // 0.5 to 2.0
-  sparksEnabled: boolean;
-  smokeEnabled: boolean;
-  punchBurstEnabled: boolean;
-  flameTrailEnabled: boolean;
+export type AppInteractionMode = 'blueprint' | 'sculpt' | 'inspector';
+
+export type BlueprintPresetType =
+  | 'blank'
+  | 'cube'
+  | 'pyramid'
+  | 'cylinder'
+  | 'sphere'
+  | 'drone'
+  | 'reactor';
+
+export type BlueprintDrawTool = 'freehand' | 'straight_line' | 'box_3d' | 'circle_3d';
+
+export interface BlueprintVertex3D {
+  x: number; // local coordinate
+  y: number;
+  z: number;
 }
 
-export type ControlledObjectType = 'fire_orb' | 'cyber_cube' | 'phoenix_core' | 'quantum_shield';
+export interface BlueprintStroke3D {
+  id: string;
+  tool: BlueprintDrawTool;
+  points: BlueprintVertex3D[];
+  color: string;
+  width: number;
+}
 
-export interface ControlledObjectState {
-  type: ControlledObjectType;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-  rotationX: number;
-  rotationY: number;
-  rotationZ: number;
-  isGrabbed: boolean;
-  grabbedByHand: string | null;
-  isAttracted: boolean;
-  energyCharge: number; // 0 to 1
-  colorScheme: FireColorScheme;
-  physicsMode: 'magnetic' | 'kinetic' | 'orbit';
-  lastInteractionText: string;
+export interface Blueprint3DState {
+  preset: BlueprintPresetType;
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  scale: number; // Zoom level (0.35 to 3.5)
+  vertices: BlueprintVertex3D[];
+  edges: [number, number][];
+  freehandStrokes: BlueprintStroke3D[];
+  isDrawing: boolean;
+  activeDrawTool: BlueprintDrawTool;
+  drawModeEnabled: boolean;
+  colorTheme: BlueprintColorTheme;
+  strokeWidth: number;
+  isManipulating: boolean;
+  manipulationType: 'move' | 'zoom' | 'rotate' | 'draw' | 'idle';
+  lastGestureNote: string;
+  gridVisible: boolean;
+  dimensionsVisible: boolean;
+  axesVisible: boolean;
 }
